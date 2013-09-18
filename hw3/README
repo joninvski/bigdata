@@ -1,0 +1,11 @@
+
+Octo
+----
+
+Server:
+
+    python octo.py server wrdcount.py
+
+Client:
+
+    python octo.py client localhost
