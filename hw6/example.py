@@ -100,13 +100,22 @@ def insert_values(db):
     c.execute('INSERT INTO sprinkler VALUES ("N", 0.7)')
     db.commit()
 
+def ask_question_knowing_wet_and_sprinkler(db):
+    c = db.cursor()
+    c.execute('SELECT rain.R, rain.P || " * " || newWet.P || " * " || sprinkler.P\
+               FROM rain, newWet, sprinkler\
+               WHERE newWet.W = "Y" and sprinkler.S = "Y" and rain.R = newWet.R and sprinkler.S = newWet.S\
+               -- GROUP BY rain.R\
+               ')
+    result = c.fetchall()
+    return result
 
 def ask_question_knowing_wet_but_dont_know_sprinkler(db):
     c = db.cursor()
-    c.execute('SELECT rain.R, newWet.P, sprinkler.P\
+    c.execute('SELECT rain.R, rain.P || " * " || newWet.P || " * " || sprinkler.P\
                FROM rain, newWet, sprinkler\
                WHERE newWet.W = "Y" and rain.R = newWet.R and sprinkler.S = newWet.S\
-               GROUP BY rain.R\
+               -- GROUP BY rain.R\
                ')
     result = c.fetchall()
     return result
@@ -137,6 +146,7 @@ insert_values(db)
 result = ask_question_knowing_wet(db)
 result = ask_question_knowing_wet_and_thunder(db)
 result = ask_question_knowing_wet_but_dont_know_sprinkler(db)
+result = ask_question_knowing_wet_and_sprinkler(db)
 
 print "Result: "
 for p in result:
