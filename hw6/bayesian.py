@@ -7,12 +7,6 @@ def create_database():
     db = sqlite3.connect(':memory:')
     return db
 
-
-
-
-
-
-
 def insert_values(db):
     c = db.cursor()
 
@@ -134,22 +128,30 @@ def insert_values(db):
     c.execute('INSERT INTO Dyspnoea VALUES ("N", "N", "Y", 0.20)')
     c.execute('INSERT INTO Dyspnoea VALUES ("N", "N", "N", 0.90)')
 
+def nice_print(desc, result):
+    for d in desc:
+        print str(d) + "\t\t",
+    print ""
 
-def test_question_tuberculosis(db):
-    # patient who did not go to Asia, did not smoke, did not have a positive X-ray and did not have Dyspnoea
-    # tuberculosis
-    # yes: 0.00007470 no: 0.99992530
-    cr = db.cursor()
+    for r in result:
+        for x in r:
+            print str(x) + "\t\t",
+        print ""
 
-            # SELECT Tuberculosis.T HasT, Tuberculosis.P TuberP, Asia.P AsiaP, EitherTubOrLungcancer.P EitherP, Xray.P XrayP, Smoking.P Smoke, Lungcancer.P Lung,  Bronchitis.P Bronc,  Dyspnoea.P Dyspnoea \
-    cr.execute('\
-            SELECT Tuberculosis.T HasT, SUM(Tuberculosis.P * Asia.P * EitherTubOrLungcancer.P * Xray.P * Smoking.P * Lungcancer.P *  Bronchitis.P * Dyspnoea.P ) \
+    print ""
+
+    n = result[0][1]
+    y = result[1][1]
+
+    print "Ponderated result (Y) = {0:.10f}".format(y / (y + n)), 
+    print " (N) = {0:.10f}".format(n / (y + n))
+    print " ------------------------- \n"
+
+BASE_QUESTION = """
+            SELECT {0} {1}, SUM(Tuberculosis.P * Asia.P * EitherTubOrLungcancer.P * Xray.P * Smoking.P * Lungcancer.P *  Bronchitis.P * Dyspnoea.P ) \
             FROM Tuberculosis, Asia, EitherTubOrLungcancer, Xray, Smoking, Lungcancer, Bronchitis, Dyspnoea\
             WHERE \
-            Asia.A = "N" \
-            AND Smoking.S = "N" \
-            AND Xray.X = "N" \
-            AND Dyspnoea.D = "N" \
+            {2}
             AND Asia.A = Tuberculosis.A \
             AND Smoking.S = Lungcancer.S \
             AND Smoking.S = Bronchitis.S \
@@ -158,95 +160,48 @@ def test_question_tuberculosis(db):
             AND Bronchitis.B = Dyspnoea.B \
             AND EitherTubOrLungcancer.E = Dyspnoea.E \
             AND EitherTubOrLungcancer.E = Xray.E \
-            GROUP BY HasT \
-            ORDER BY HasT' \
-            )
+            GROUP BY {1} \
+            ORDER BY {1} \
+"""
+
+TEST_CONDITIONS = '\
+        Asia.A = "N" \
+        AND Smoking.S = "N" \
+        AND Xray.X = "N" \
+        AND Dyspnoea.D = "N" \
+        '
+
+def execute(unknown, unknown_name, conditions):
+    cr = db.cursor()
+    sql = BASE_QUESTION.format(unknown, unknown_name, conditions)
+    cr.execute(sql)
 
     result = cr.fetchall()
     desc = [d[0] for d in cr.description]
     return (desc, result)
+
+def test_question_tuberculosis(db):
+    # patient who did not go to Asia, did not smoke, did not have a positive X-ray and did not have Dyspnoea
+    # tuberculosis
+    # yes: 0.00007470 no: 0.99992530
+    desc, result = execute("Tuberculosis.T", "HasTuber", TEST_CONDITIONS)
+    nice_print(desc, result)
 
 def test_question_lung_cancer(db):
     # lung cancer
     # yes: 0.00007470 no: 0.99992530
-    cr = db.cursor()
-
-    # SELECT Tuberculosis.T HasT, Tuberculosis.P TuberP, Asia.P AsiaP, EitherTubOrLungcancer.P EitherP, Xray.P XrayP, Smoking.P Smoke, Lungcancer.P Lung,  Bronchitis.P Bronc,  Dyspnoea.P Dyspnoea \
-    cr.execute('\
-        SELECT Lungcancer.L HasL, SUM(Tuberculosis.P * Asia.P * EitherTubOrLungcancer.P * Xray.P * Smoking.P * Lungcancer.P *  Bronchitis.P * Dyspnoea.P ) \
-        FROM Tuberculosis, Asia, EitherTubOrLungcancer, Xray, Smoking, Lungcancer, Bronchitis, Dyspnoea\
-        WHERE \
-        Asia.A = "N" \
-        AND Smoking.S = "N" \
-        AND Xray.X = "N" \
-        AND Dyspnoea.D = "N" \
-        AND Asia.A = Tuberculosis.A \
-        AND Smoking.S = Lungcancer.S \
-        AND Smoking.S = Bronchitis.S \
-        AND Tuberculosis.T = EitherTubOrLungcancer.T \
-        AND Lungcancer.L = EitherTubOrLungcancer.L \
-        AND Bronchitis.B = Dyspnoea.B \
-        AND EitherTubOrLungcancer.E = Dyspnoea.E \
-        AND EitherTubOrLungcancer.E = Xray.E \
-        GROUP BY HasL \
-        ORDER BY HasL' \
-        )
-
-    result = cr.fetchall()
-    desc = [d[0] for d in cr.description]
-    return (desc, result)
-
+    desc, result = execute("Lungcancer.L", "HasLung", TEST_CONDITIONS)
+    nice_print(desc, result)
 
 def test_question_bronchitis(db):
     # Bronchitis
     # yes: 0.08696218 no: 0.91303782
-    cr = db.cursor()
-
-    # SELECT Tuberculosis.T HasT, Tuberculosis.P TuberP, Asia.P AsiaP, EitherTubOrLungcancer.P EitherP, Xray.P XrayP, Smoking.P Smoke, Lungcancer.P Lung,  Bronchitis.P Bronc,  Dyspnoea.P Dyspnoea \
-    cr.execute('\
-        SELECT Bronchitis.B HasB, SUM(Tuberculosis.P * Asia.P * EitherTubOrLungcancer.P * Xray.P * Smoking.P * Lungcancer.P *  Bronchitis.P * Dyspnoea.P ) \
-        FROM Tuberculosis, Asia, EitherTubOrLungcancer, Xray, Smoking, Lungcancer, Bronchitis, Dyspnoea\
-        WHERE \
-        Asia.A = "N" \
-        AND Smoking.S = "N" \
-        AND Xray.X = "N" \
-        AND Dyspnoea.D = "N" \
-        AND Asia.A = Tuberculosis.A \
-        AND Smoking.S = Lungcancer.S \
-        AND Smoking.S = Bronchitis.S \
-        AND Tuberculosis.T = EitherTubOrLungcancer.T \
-        AND Lungcancer.L = EitherTubOrLungcancer.L \
-        AND Bronchitis.B = Dyspnoea.B \
-        AND EitherTubOrLungcancer.E = Dyspnoea.E \
-        AND EitherTubOrLungcancer.E = Xray.E \
-        GROUP BY HasB \
-        ORDER BY HasB' \
-        )
-
-    result = cr.fetchall()
-    desc = [d[0] for d in cr.description]
-    return (desc, result)
-
-
+    desc, result = execute("Bronchitis.B", "HasBron", TEST_CONDITIONS)
+    nice_print(desc, result)
 
 db = create_database()
 insert_values(db)
-desc, result = test_question_bronchitis(db)
+test_question_bronchitis(db)
+test_question_lung_cancer(db)
+test_question_tuberculosis(db)
 
-print "##############################################"
-for d in desc:
-    print str(d) + "\t\t",
-print ""
-
-for r in result:
-    for x in r:
-        print str(x) + "\t\t",
-    print ""
-
-print ""
-
-n = result[0][1]
-y = result[1][1]
-
-print "Ponderated result (Y) = {0:.10f}".format(y / (y + n)), 
-print " (N) = {0:.10f}".format(n / (y + n))
